@@ -13,24 +13,37 @@ import Data.Text (Text)
 -- import qualified Data.Text as T
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Time (UTCTime)
+import Data.Int (Int64)
 
-import DataPushers
+import LatestStore (Sensor)
 
 
 -- * Subscription data
 
+type RequestID = Int64
+
+-- | Contains common data for some subscription
+data SubData = SubData
+    { sRequestID :: RequestID -- ^ Unique ID
+    , sExpiry    :: UTCTime   -- ^ Time to live is limited to this expiration time
+    , sCallback  :: !Callback -- ^ where to send data
+    , sMetaData  :: Text      -- ^ Reason for this subscription or other comment
+                         -- Single line is recommended for easy debugging and logging purposes
+    } deriving (Show, Typeable)
+
 -- | Event Subscriptions; Callback when specified event is triggered
 data ESub = ESub
-    { esSensor :: !Sensor -- ^ What sensor to watch
-    , esEvent  :: !Event  -- ^ and on which event to trigger
-    , esCallback :: !Callback -- ^ where to send data
+    { esSensor  :: !Sensor -- ^ What sensor to watch
+    , esEvent   :: !Event  -- ^ and on which event to trigger
+    , esSubData :: !SubData
     } deriving (Show, Typeable)
 
 -- | Interval Subscription; Callbacks on intervals
 data ISub = ISub
     { isSensors  :: ![Sensor]  -- ^ sensors to read
     , isInterval :: !Double    -- ^ In seconds
-    , isCallback :: !Callback  -- ^ where to send data
+    , isSubData  :: !SubData
     } deriving (Show, Typeable)
 
 data Event = OnChange  -- ^ Triggers whenever value of a sensor changes
@@ -38,32 +51,19 @@ data Event = OnChange  -- ^ Triggers whenever value of a sensor changes
            | OnAttach  -- ^ Triggers when a new `Sensor` is attached (the first value)
            deriving (Show, Typeable)
 
-type CallbackFunction = SensorData -> IO InternalCallback
-
-class Callback c where
-    runCallback :: CallbackFunction
-
-data Callback = ToLog Text     -- ^ Print data to log/terminal with some text as prefix
-              | ToCSV FilePath -- ^ Saves to csv
-              | InternalFunction -- ^ internal function with id
-              -- ^ do some logic and either send other callback or internal write
-              -- TODO: some others; OMI?, DB?,
-    deriving (Show, Typeable)
+data Callback = Callback String  -- ^ Connect and send to this URL
+              deriving (Show, Eq, Typeable)
 
 
-
--- | Send another callback or internal write event
-data InternalCallback = ReCallback Callback | WriteEvent Sensor TypedData
-    deriving (Show, Typeable)
+-- -- | Send another callback or internal write event
+-- data InternalCallback = ReCallback Callback | WriteEvent Sensor TypedData
+--     deriving (Show, Typeable)
 
 data EventSubscriptions = EventSubscriptions {allESubs :: !(Map Sensor [ESub])}
     deriving (Show, Typeable)
 
-data IntervalSubscriptions = IntervalSubscriptions {allISubs :: [ISub]}
+data IntervalSubscriptions = IntervalSubscriptions {allISubs :: !(Map RequestID ISub)}
     deriving (Show, Typeable)
-
-
--- * Internal Callbacks (custom)
 
 
 
@@ -74,7 +74,7 @@ getAllESubs :: Query EventSubscriptions [ESub]
 getAllESubs = concat . Map.elems . allESubs <$> ask
 
 getAllISubs :: Query IntervalSubscriptions [ISub]
-getAllISubs = allISubs <$> ask
+getAllISubs = Map.elems . allISubs <$> ask
 
 lookupESub :: Sensor -> Query EventSubscriptions [ESub]
 lookupESub key = do
@@ -90,9 +90,18 @@ addESub sub@ESub {esSensor = sensor} = do
 addISub :: ISub -> Update IntervalSubscriptions ()
 addISub sub = do
     IntervalSubscriptions subs <- get
-    put $ IntervalSubscriptions (sub : subs)
+    let rId = sRequestID $ isSubData sub
+    put $ IntervalSubscriptions $ Map.insert rId sub subs
 
+removeESub :: Sensor -> Update EventSubscriptions ()
+removeESub sensor = do
+    EventSubscriptions subs <- get
+    put $ EventSubscriptions $ Map.delete sensor subs
 
+removeISub :: RequestID -> Update IntervalSubscriptions ()
+removeISub rId = do
+    IntervalSubscriptions subs <- get
+    put $ IntervalSubscriptions $ Map.delete rId subs
 
 
 
@@ -104,6 +113,7 @@ deriveSafeCopy 1 'base ''ISub
 deriveSafeCopy 1 'base ''ESub
 deriveSafeCopy 1 'base ''Event
 deriveSafeCopy 1 'base ''Callback
+deriveSafeCopy 1 'base ''SubData
 deriveSafeCopy 1 'base ''EventSubscriptions
 deriveSafeCopy 1 'base ''IntervalSubscriptions
 

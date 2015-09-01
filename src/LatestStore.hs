@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module LatestStore where
 
 import Data.SafeCopy
@@ -10,8 +11,22 @@ import Control.Monad.Reader (ask)
 import Control.Monad.State (get, put)
 import qualified Data.Map as Map
 import Data.Map (Map)
+import Data.Text (Text)
+import Data.Time (UTCTime)
 
-import DataPushers (Sensor, SensorData (..))
+-- * Sensor types
+
+type Sensor = Text
+
+newtype UntypedData = UntypedData Text deriving (Eq, Show)
+
+data SensorData = SensorData
+    { sdSensor :: Sensor
+    , sdTimestamp :: UTCTime
+    , sdValue  :: UntypedData
+    }
+    deriving (Show, Typeable)
+
 
 -- * Latest Store datatype
 
@@ -35,6 +50,8 @@ setSensorData sensorData@SensorData {sdSensor = sensor} = do
 
 -- * TH stuff
 
+deriveSafeCopy 1 'base ''UntypedData
+deriveSafeCopy 1 'base ''SensorData
 deriveSafeCopy 1 'base ''LatestStore
 $(makeAcidic ''LatestStore ['lookupSensorData, 'setSensorData])
 

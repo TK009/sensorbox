@@ -66,6 +66,7 @@ executable sensorbox
                      , safecopy >=0.7
                      , mtl
                      , time >=1.4
+                     , ivar-simple
   
   -- Directories containing source files.
   hs-source-dirs:      src
