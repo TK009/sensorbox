@@ -1,24 +1,23 @@
--- implements
---
--- logic for switching pump
--- output for graph
 
 import Data.Acid
-import qualified Data.Map as Map
 
 import DataController
 import Subscriptions
 import LatestStore
+import Shared
+
 
 main :: IO ()
 main = do
-    latestValues <- openLocalState (LatestStore Map.empty)
-    eventSubs    <- openLocalState (EventSubscriptions Map.empty)
-    intervalSubs <- openLocalState (IntervalSubscriptions Map.empty)
+    latestValues <- openLocalState emptyLatestStore
+    eventSubs    <- openLocalState emptyEventSubscriptions
+    intervalSubs <- openLocalState emptyIntervalSubscriptions
 
-    -- let shared = Shared latestValues eventSubs intervalSubs
-    currentIntervalSubs <- query intervalSubs GetAllISubs
-    startIntervalThread currentIntervalSubs
+    let shared = Shared latestValues eventSubs intervalSubs
+
+    _ <- startIntervalThread shared
+
+    return ()
 
 
 

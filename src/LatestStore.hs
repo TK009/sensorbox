@@ -4,6 +4,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module LatestStore where
 
+import Data.Maybe (mapMaybe)
 import Data.SafeCopy
 import Data.Typeable
 import Data.Acid
@@ -33,6 +34,8 @@ data SensorData = SensorData
 data LatestStore = LatestStore {lsAllData :: !(Map Sensor SensorData)}
     deriving (Show, Typeable)
 
+emptyLatestStore :: LatestStore
+emptyLatestStore = LatestStore Map.empty 
 
 
 -- * Queries
@@ -41,6 +44,11 @@ lookupSensorData :: Sensor -> Query LatestStore (Maybe SensorData)
 lookupSensorData sensor = do
     LatestStore allData <- ask
     return $ Map.lookup sensor allData
+
+lookupSensorDatas :: [Sensor] -> Query LatestStore [SensorData]
+lookupSensorDatas sensors = do
+    LatestStore allData <- ask
+    return $ mapMaybe (`Map.lookup` allData) sensors
 
 setSensorData :: SensorData -> Update LatestStore ()
 setSensorData sensorData@SensorData {sdSensor = sensor} = do
@@ -53,6 +61,6 @@ setSensorData sensorData@SensorData {sdSensor = sensor} = do
 deriveSafeCopy 1 'base ''UntypedData
 deriveSafeCopy 1 'base ''SensorData
 deriveSafeCopy 1 'base ''LatestStore
-$(makeAcidic ''LatestStore ['lookupSensorData, 'setSensorData])
+$(makeAcidic ''LatestStore ['lookupSensorData, 'lookupSensorDatas, 'setSensorData])
 
 
