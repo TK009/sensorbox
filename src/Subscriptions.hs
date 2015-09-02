@@ -13,7 +13,7 @@ import Data.Text (Text)
 -- import qualified Data.Text as T
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Time (UTCTime)
+import Data.Time (UTCTime, NominalDiffTime)
 import Data.Int (Int64)
 
 import LatestStore (Sensor)
@@ -25,10 +25,11 @@ type RequestID = Int64
 
 -- | Contains common data for some subscription
 data SubData = SubData
-    { sRequestID :: RequestID -- ^ Unique ID
-    , sExpiry    :: UTCTime   -- ^ Time to live is limited to this expiration time
-    , sCallback  :: !Callback -- ^ where to send data
-    , sMetaData  :: Text      -- ^ Reason for this subscription or other comment
+    { sRequestID :: !RequestID -- ^ Unique ID
+    , sStartTime :: !UTCTime   -- ^ When was this sub loaded
+    , sExpiry    :: !UTCTime   -- ^ Time to live is limited to this expiration time
+    , sCallback  :: !Callback  -- ^ where to send data
+    , sMetaData  :: !Text      -- ^ Reason for this subscription or other comment
                          -- Single line is recommended for easy debugging and logging purposes
     } deriving (Show, Typeable)
 
@@ -41,8 +42,8 @@ data ESub = ESub
 
 -- | Interval Subscription; Callbacks on intervals
 data ISub = ISub
-    { isSensors  :: ![Sensor]  -- ^ sensors to read
-    , isInterval :: !Double    -- ^ In seconds
+    { isSensors  :: ![Sensor]        -- ^ sensors to read
+    , isInterval :: !NominalDiffTime -- ^ In seconds
     , isSubData  :: !SubData
     } deriving (Show, Typeable)
 
@@ -62,6 +63,7 @@ data Callback = Callback String  -- ^ Connect and send to this URL
 data EventSubscriptions = EventSubscriptions {allESubs :: !(Map Sensor [ESub])}
     deriving (Show, Typeable)
 
+type IntervalQueue = Seq.Seq (UTCTime, ISub)
 data IntervalSubscriptions = IntervalSubscriptions {allISubs :: !(Map RequestID ISub)}
     deriving (Show, Typeable)
 
