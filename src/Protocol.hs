@@ -9,7 +9,7 @@ import LatestStore (Sensor, UntypedData)
 -- | Protocol definition:
 -- Server receives (<), Server sends (>)
 -- - All requests end to ';' or '\n'
--- - Callbacks should reply with 
+-- - Callbacks should reply with a new request or empty request (request end)
 --
 -- Request Sending:
 -- < 'Request'
@@ -17,8 +17,8 @@ import LatestStore (Sensor, UntypedData)
 --
 -- Callbacks
 -- > 'Response'
--- < 'Request' or empty request (';' or '\n')
--- > 'Response'
+-- < 'Request' or empty request
+-- [> 'Response']
 --
 type Protocol = Request
 
@@ -40,14 +40,15 @@ type Protocol = Request
 --
 -- < Subscribe Raw
 -- >c DR 6
--- <c "0.241"
+-- <c Write "Objects/Derp" "0.241"
 -- >c Success
 --
 --
-data Request = Write Sensor NewSensorData
+data Request = Write Sensor NewSensorData -- ^ Save a new value [and Sensor]
              | Subscribe SubType TTL [Sensor] MetaData
-             | Cancel RequestID
-             | ForceEvent Event Sensor -- Mainly for Output device subs
+             | Cancel RequestID        -- ^ Cancel a Subscription
+             | ForceEvent Event Sensor -- ^ Mainly for restarting Output device subs
+             | Erase Sensor            -- ^ Removes the Sensor
 
 -- | Simpler version for protocol
 data NewSensorData = Data Text
@@ -57,8 +58,8 @@ data Timestamp = UTC UTCTime
                | UnixTime Double  -- Double to allow fractions of seconds
 
 -- | Raw versions will have callback responses as Text
-data SubType = OnInterval Double Unit
-             | OnIntervalRaw Double Unit
+data SubType = OnInterval Double TimeUnit
+             | OnIntervalRaw Double TimeUnit
              | Event Event
              | EventRaw Event
 
@@ -71,11 +72,11 @@ data Response = Success RequestID
               | Raw Text
 
 type Code = Int
-data TTL  = TTL Double Unit
+data TTL  = TTL Double TimeUnit
           | TTLUntil Timestamp
 
-data Unit = Secs
-          | Mins
-          | Hours
-          | Days
+data TimeUnit = Secs
+              | Mins
+              | Hours
+              | Days
 
