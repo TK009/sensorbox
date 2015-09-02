@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 module Subscriptions where
@@ -8,13 +9,14 @@ import Control.Monad.State (get, put)
 import Data.SafeCopy
 import Data.Typeable
 import Data.Acid
-import Data.Maybe (maybeToList)
+import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 -- import qualified Data.Text as T
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Sequence ( Seq, (|>), ViewL (..) )
 import qualified Data.Sequence as Seq
+import qualified Data.Text as Text
 import Data.Foldable (toList)
 import Data.Time (UTCTime, NominalDiffTime, diffUTCTime, addUTCTime)
 import Data.Int (Int64)
@@ -54,7 +56,7 @@ data ISub = ISub
 data Event = OnChange  -- ^ Triggers whenever value of a sensor changes
            | OnUpdate  -- ^ Triggers every time an update on value is got (even if same)
            | OnAttach  -- ^ Triggers when a new `Sensor` is attached (the first value)
-           deriving (Show, Typeable)
+           deriving (Show, Typeable, Eq)
 
 data Callback = Callback String  -- ^ Connect and send to this URL
               deriving (Show, Eq, Typeable)
@@ -108,10 +110,20 @@ getAllESubs = concat . Map.elems . allESubs <$> ask
 getAllISubs :: Query IntervalSubscriptions [ISub]
 getAllISubs = map snd . toList . allISubs <$> ask
 
+collectParentsAndSelf :: Sensor -> [Sensor]
+collectParentsAndSelf self =
+    let splitted = Text.split (== '/') self
+        join = Text.intercalate "/"
+        reverseParents [] = []
+        reverseParents [root] = [root]
+        reverseParents path@(_ : pathTail) = (join . reverse) path : reverseParents pathTail
+    in reverseParents (reverse splitted)
+
 lookupESub :: Sensor -> Query EventSubscriptions [ESub]
-lookupESub key = do
+lookupESub deepestKey = do
     EventSubscriptions esubs <- ask
-    return . concat . maybeToList $ Map.lookup key esubs
+    let lookupPath key = Map.lookup key esubs
+    return . concat . mapMaybe lookupPath $ collectParentsAndSelf deepestKey
 
 
 -- | Query with current time and get a triggered interval sub (if any) and
@@ -168,10 +180,17 @@ addISub sub = do
 --    let nextRuns       = map (calcNextRun currentTime) intervalSubs `zip` intervalSubs
 --        sortedNextRuns = sortIntervalQueue $ Seq.fromList nextRuns
 
-removeESub :: Sensor -> Update EventSubscriptions ()
+removeESubsForSensor :: Sensor -> Update EventSubscriptions ()
+removeESubsForSensor sensor = do
+    EventSubscriptions subs <- get
+    put $ EventSubscriptions $ Map.delete sensor subs
+
+{- TODO:
+removeESub :: RequestID -> Update EventSubscriptions ()
 removeESub sensor = do
     EventSubscriptions subs <- get
     put $ EventSubscriptions $ Map.delete sensor subs
+-}
 
 removeISub :: RequestID -> Update IntervalSubscriptions ()
 removeISub rId = do
@@ -192,6 +211,6 @@ deriveSafeCopy 1 'base ''SubData
 deriveSafeCopy 1 'base ''EventSubscriptions
 deriveSafeCopy 1 'base ''IntervalSubscriptions
 
-$(makeAcidic ''EventSubscriptions ['getAllESubs, 'lookupESub, 'addESub])
-$(makeAcidic ''IntervalSubscriptions ['getAllISubs, 'addISub, 'lookupNextISub])
+$(makeAcidic ''EventSubscriptions ['getAllESubs, 'lookupESub, 'addESub, 'removeESubsForSensor])
+$(makeAcidic ''IntervalSubscriptions ['getAllISubs, 'addISub, 'lookupNextISub, 'removeISub])
 

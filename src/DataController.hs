@@ -1,6 +1,6 @@
 module DataController where
 
-import Control.Monad (unless)
+import Control.Monad (unless, when)
 import Data.Acid
 -- import qualified Data.Map as Map
 import Data.Time.Clock
@@ -47,19 +47,37 @@ intervalLoop Shared {sISubDB = intervalSubs, sLatestStore = latestStore} = loop
 
 
 
-{-
-start :: Shared -> IO () -- TODO
-start shared@Shared {sESubDB = eventSubsDB} = do
-    undefined
+triggerEventsSubs :: Shared -> SensorData -> IO () -- TODO
+triggerEventsSubs shared@Shared {sESubDB = eventSubsDB, sLatestStore = latestStore} =
+    dataController
   where
     dataController :: SensorData -> IO () -- InputPusher
-    dataController sensorData@SensorData {sdSensor = sensor, sdValue = value} = do
+    dataController newData@SensorData {
+            sdSensor = sensor, sdValue = newValue, sdTimestamp = newTime} = do
         eventSubs <- query eventSubsDB $ LookupESub sensor
 
-        --let onUpdate = filter eventSubs
-        return ()
--}
+        let filterSubs event = filter ((== event) . esEvent) eventSubs
+            onChangeSubs = filterSubs OnChange
+            onUpdateSubs = filterSubs OnUpdate
+            onAttachSubs = filterSubs OnAttach
+            callback     = flip sendCallback [newData] . esSubData
 
+        -- Update events happen always
+        mapM_ callback onUpdateSubs
+
+        mOldData <- query latestStore $ LookupSensorData sensor
+
+        case mOldData of
+            Just SensorData {sdValue = oldValue, sdTimestamp = oldTime} ->
+                when (oldTime < newTime) $ do
+                    when (oldValue /= newValue) $
+                        mapM_ callback onChangeSubs
+                    update latestStore $ SetSensorData newData
+
+            Nothing ->   -- New data
+                mapM_ callback onAttachSubs
+
+        return ()
 
 
 
