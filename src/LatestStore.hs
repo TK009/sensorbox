@@ -23,11 +23,10 @@ newtype UntypedData = UntypedData Text deriving (Eq, Show)
 
 data SensorData = SensorData
     { sdSensor :: Sensor
-    , sdTimestamp :: UTCTime
     , sdValue  :: UntypedData
+    , sdTimestamp :: UTCTime
     }
     deriving (Show, Typeable)
-
 
 -- * Latest Store datatype
 
@@ -35,7 +34,7 @@ data LatestStore = LatestStore {lsAllData :: !(Map Sensor SensorData)}
     deriving (Show, Typeable)
 
 emptyLatestStore :: LatestStore
-emptyLatestStore = LatestStore Map.empty 
+emptyLatestStore = LatestStore Map.empty
 
 
 -- * Queries
