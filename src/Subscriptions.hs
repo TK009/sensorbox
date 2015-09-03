@@ -58,7 +58,8 @@ data Event = OnChange  -- ^ Triggers whenever value of a sensor changes
            | OnAttach  -- ^ Triggers when a new `Sensor` is attached (the first value)
            deriving (Show, Typeable, Eq)
 
-data Callback = Callback String  -- ^ Connect and send to this URL
+data Callback = IP String    -- ^ Connect and send to this URL
+              | IPRaw String -- ^ Raw protocol behaviour
               deriving (Show, Eq, Typeable)
 
 
@@ -153,7 +154,7 @@ lookupNextISub currentTime = do
                 in if currentTime > expiry
                     then rest  -- deleted
                     else sortIntervalQueue $ rest |> newSubPair -- re-added
-        
+
         mHeadSub = fst <$> mHeadTail
         mNext    = fst <$> safeHeadTail (Seq.viewl newSubs)
         mNextTriggerTime = fst <$> mNext

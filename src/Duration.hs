@@ -7,29 +7,31 @@ import qualified Control.Concurrent as C (threadDelay)
 
 type Duration = NominalDiffTime
 
-milliMult, microMult :: Duration
+dayMult, hourMult, minuteMult, milliMult, microMult :: Duration
 
-milliMult = 1000
-microMult = 1000000
+minuteMult = 60
+hourMult   = 3600
+dayMult    = hourMult * 24
+
+milliMult  = 1000
+microMult  = 1000000
 
 -- * Conversion
 
-seconds, millis, micros :: (Integral i) => i -> Duration
-seconds = fromIntegral
-
-millis = (/ milliMult) . fromIntegral
-
-micros = (/ microMult) . fromIntegral
-
+days, hours, minutes, seconds, millis, micros :: (Real n) => n -> Duration
+days    = (* dayMult)    . realToFrac
+hours   = (* hourMult)   . realToFrac
+minutes = (* minuteMult) . realToFrac
+seconds =                  realToFrac
+millis  = (/ milliMult)  . realToFrac
+micros  = (/ microMult)  . realToFrac
 
 
 asSeconds  :: (Fractional f) => Duration -> f
 asSeconds = realToFrac
 
 asMillis, asMicros :: (Integral i) => Duration -> i
-
 asMillis = round . (* milliMult)
-
 asMicros = round . (* microMult)
 
 -- * Re-defined functions

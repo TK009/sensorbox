@@ -1,8 +1,10 @@
 module Protocol where
 
 import Data.Time.Clock (UTCTime)
+import Data.Text (Text)
+
 import Subscriptions (Event, RequestID)
-import LatestStore (Sensor, UntypedData)
+import LatestStore (Sensor, SensorData, UntypedData)
 
 
 -- TODO: is a version system needed?
@@ -71,8 +73,8 @@ data SubType = OnInterval Double TimeUnit
 
 -- | Raw versions will have callback responses as Text values only
 -- and will accept responses as write requests to sensor given in MetaData field
-data RCallback = ToIP Text    -- ^ IP + port string, for example "127.0.0.1:9444"
-               | ToIPRaw Text -- ^ Same as above but different protocol behaviour
+data RCallback = ToIP String    -- ^ IP + port string, for example "127.0.0.1:9444"
+               | ToIPRaw String -- ^ Same as above but different protocol behaviour
 
 type MetaData = Text
 
