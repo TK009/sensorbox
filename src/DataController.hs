@@ -12,7 +12,7 @@ import LatestStore
 import CallbackSystem
 import Shared
 import Duration
-import Protocol (ImmediateResponse, Response(..))
+import Protocol (ImmediateResponse, Response (..))
 
 
 -- | Initialize intervalThread
@@ -48,7 +48,7 @@ intervalLoop Shared {sISubDB = intervalSubs, sLatestStore = latestStore} = loop
 
 
 
-
+-- | trigger events and save data
 processData :: Shared -> SensorData -> IO ()
 processData Shared {sESubDB = eventSubsDB, sLatestStore = latestStore}
             newData@SensorData { sdSensor = sensor

@@ -21,8 +21,6 @@ Status of developement
 ----------------------
 
 Missing parts of the system:
-* DataController
-  * Object support for interval subs
 * Communication
   * Callbacks
   * Socket controller
@@ -51,6 +49,8 @@ Features
     * `OnUpdate`: When there is any value received for the sensor
     * `OnChange`: When there is a new value received and it is different than
       the last value.
+  - Event based subscriptions supports also parent level subscriptions, meaning
+    that future sensors below subscribed parent will also trigger the events
   - Subscriptions can be removed by waiting them to expire after the given time
     or with Cancel request.
     * `RequestID` is returned when a subscription is made
