@@ -10,6 +10,10 @@ import LatestStore (Sensor, UntypedData)
 -- Server receives (<), Server sends (>)
 -- - All requests end to ';' or '\n'
 -- - Callbacks should reply with a new request or empty request (request end)
+-- - This protocol can re-use the same callback or request connection so
+--   they can be left open or closed depending the use case.
+-- - There is a special case for "raw" subscriptions that doesn't ansver with
+--   Response and allows implicit write request.
 --
 -- Request Sending:
 -- < 'Request'
@@ -18,7 +22,7 @@ import LatestStore (Sensor, UntypedData)
 -- Callbacks
 -- > 'Response'
 -- < 'Request' or empty request
--- [> 'Response']
+-- > ['Response']
 --
 type Protocol = Request
 
@@ -30,7 +34,8 @@ type Protocol = Request
 -- < Subscribe (OnInterval 10 Secs) (TTL 30 Mins)
 --     ["Objects/Puistola/Temperature"] (Callback "localhost" 8094) "For drawing graph"
 -- > Success 24
--- > Results 24 [SensorData "Objects/Puistola/Temperature" "42" 2015-09-02 11:37:59.58345 UTC]
+-- >c Results 24 [SensorData "Objects/Puistola/Temperature" "42" 2015-09-02 11:37:59.58345 UTC]
+-- <c ;
 --
 -- < Cancel 34
 -- > Failure 34
@@ -38,10 +43,12 @@ type Protocol = Request
 -- < ForceEvent OnUpdate "Objects/Puistola/Light1"
 -- > Success 0
 --
--- < Subscribe Raw
+-- < Subscribe (OnIntervalRaw 20 Secs) (TTL 360 Days)
+--     ["Objects/Puistola/VirtualPullCommands/Moisture1"]
+--     "Objects/Puistola/Derp"
 -- >c DR 6
--- <c Write "Objects/Derp" "0.241"
--- >c Success
+-- <c 0.241  -- Writes to "Derp"
+--  (Success)
 --
 --
 data Request = Write Sensor NewSensorData -- ^ Save a new value [and Sensor]
@@ -57,7 +64,8 @@ data NewSensorData = Data Text
 data Timestamp = UTC UTCTime
                | UnixTime Double  -- Double to allow fractions of seconds
 
--- | Raw versions will have callback responses as Text
+-- | Raw versions will have callback responses as Text values only
+-- and will accept responses as write requests to sensor given in MetaData field
 data SubType = OnInterval Double TimeUnit
              | OnIntervalRaw Double TimeUnit
              | Event Event

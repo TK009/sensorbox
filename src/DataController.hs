@@ -48,7 +48,7 @@ intervalLoop Shared {sISubDB = intervalSubs, sLatestStore = latestStore} = loop
 
 
 triggerEventsSubs :: Shared -> SensorData -> IO () -- TODO
-triggerEventsSubs shared@Shared {sESubDB = eventSubsDB, sLatestStore = latestStore} =
+triggerEventsSubs Shared {sESubDB = eventSubsDB, sLatestStore = latestStore} =
     dataController
   where
     dataController :: SensorData -> IO () -- InputPusher
