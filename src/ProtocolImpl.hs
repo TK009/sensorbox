@@ -6,16 +6,13 @@ import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import Data.Acid
 import Control.Concurrent.STM (atomically)
 
-import Protocol 
+import Protocol
 import Shared
-import DataController (triggerEventsSubs)
+import DataController (processData, triggerEventSubs)
 import Duration
 import Subscriptions
 import LatestStore
 
-
--- | This means response to the connection of the request in question
-type ImmediateResponse = Response
 
 processRequest :: Shared -> Request -> IO ImmediateResponse
 processRequest shared@Shared { sISubDB = intervalSubs
@@ -24,7 +21,7 @@ processRequest shared@Shared { sISubDB = intervalSubs
   where
     runRequest (Write sensor newData) = do
         currentTime <- getCurrentTime
-        triggerEventsSubs shared $ parseNewData sensor newData currentTime 
+        processData shared $ parseNewData sensor newData currentTime
         return $ Success 0
 
     runRequest (Subscribe subType ttl callb sensors meta) = do
@@ -52,7 +49,7 @@ processRequest shared@Shared { sISubDB = intervalSubs
         update eventSubs $ RemoveESub requestID
         return $ Success requestID
 
-    runRequest (ForceEvent event sensor) = undefined
+    runRequest (ForceEvent event sensor) = triggerEventSubs shared sensor event
 
     runRequest (Erase sensor) = undefined
 

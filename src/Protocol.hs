@@ -84,6 +84,9 @@ data Response = Success RequestID
               | Results RequestID [SensorData]
               | Raw Text
 
+-- | This means response to the connection of the request in question
+type ImmediateResponse = Response
+
 type Code = Int
 data TTL  = TTL Double TimeUnit
           | TTLUntil Timestamp

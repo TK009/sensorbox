@@ -22,11 +22,13 @@ Status of developement
 
 Missing parts of the system:
 * DataController
-    * Object support for interval subs
+  * Object support for interval subs
 * Communication
-  * Callback logic
+  * Callbacks
   * Protocol implementation
   * Socket controller
+* Subscriptions
+  * Removing expired event subs
 * More documentation
 
 

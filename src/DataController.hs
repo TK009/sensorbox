@@ -1,8 +1,9 @@
+{-# LANGUAGE OverloadedStrings #-}
 module DataController where
 
 import Control.Monad (unless, when)
 import Data.Acid
--- import qualified Data.Map as Map
+import qualified Data.Text as Text
 import Data.Time.Clock
 import Control.Concurrent (forkIO, ThreadId)
 
@@ -11,6 +12,7 @@ import LatestStore
 import CallbackSystem
 import Shared
 import Duration
+import Protocol (ImmediateResponse, Response(..))
 
 
 -- | Initialize intervalThread
@@ -47,13 +49,11 @@ intervalLoop Shared {sISubDB = intervalSubs, sLatestStore = latestStore} = loop
 
 
 
-triggerEventsSubs :: Shared -> SensorData -> IO () -- TODO
-triggerEventsSubs Shared {sESubDB = eventSubsDB, sLatestStore = latestStore} =
-    dataController
-  where
-    dataController :: SensorData -> IO () -- InputPusher
-    dataController newData@SensorData {
-            sdSensor = sensor, sdValue = newValue, sdTimestamp = newTime} = do
+processData :: Shared -> SensorData -> IO ()
+processData Shared {sESubDB = eventSubsDB, sLatestStore = latestStore}
+            newData@SensorData { sdSensor = sensor
+                               , sdValue = newValue
+                               , sdTimestamp = newTime} = do
         eventSubs <- query eventSubsDB $ LookupESub sensor
 
         let filterSubs event = filter ((== event) . esEvent) eventSubs
@@ -78,6 +78,31 @@ triggerEventsSubs Shared {sESubDB = eventSubsDB, sLatestStore = latestStore} =
                 mapM_ callback onAttachSubs
 
         return ()
+
+triggerEventSubs :: Shared -> Sensor -> Event -> IO ImmediateResponse
+triggerEventSubs Shared {sESubDB = eventSubsDB,
+                         sLatestStore = latestStore} sensor event = do
+
+    eventSubs <- query eventSubsDB $ LookupESub sensor
+
+    -- TODO: same line as in processData
+    let filteredSubs = filter ((== event) . esEvent) eventSubs
+
+    if null filteredSubs then
+        return $ Success 0 -- Event triggered but nobody wanted it
+
+    else do
+        mLastData <- query latestStore $ LookupSensorData sensor
+
+        case mLastData of
+            Just lastData ->
+                let callback = flip sendCallback [lastData] . esSubData
+                in do
+                    mapM_ callback filteredSubs
+                    return $ Success 0
+            Nothing ->
+                return $ Failure 0 404 $ "No data for sensor: " `Text.append` sensor
+
 
 
 
