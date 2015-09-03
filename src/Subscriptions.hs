@@ -186,17 +186,24 @@ removeESubsForSensor sensor = do
     EventSubscriptions subs <- get
     put $ EventSubscriptions $ Map.delete sensor subs
 
-{- TODO:
 removeESub :: RequestID -> Update EventSubscriptions ()
-removeESub sensor = do
+removeESub rId = do
     EventSubscriptions subs <- get
-    put $ EventSubscriptions $ Map.delete sensor subs
--}
+
+    let nonEmptyList :: [a] -> Maybe [a]
+        nonEmptyList []    = Nothing
+        nonEmptyList stuff = Just stuff
+
+        filterEmpty :: [ESub] -> Maybe [ESub]
+        filterEmpty = nonEmptyList . filter ((/= rId) . sRequestID . esSubData)
+        filteredSubs = Map.mapMaybe filterEmpty subs
+
+    put $ EventSubscriptions filteredSubs
 
 removeISub :: RequestID -> Update IntervalSubscriptions ()
 removeISub rId = do
     IntervalSubscriptions subs <- get
-    put $ IntervalSubscriptions $ Seq.filter ((rId ==) . sRequestID . isSubData . snd) subs
+    put $ IntervalSubscriptions $ Seq.filter ((/= rId) . sRequestID . isSubData . snd) subs
 
 
 
@@ -212,6 +219,7 @@ deriveSafeCopy 1 'base ''SubData
 deriveSafeCopy 1 'base ''EventSubscriptions
 deriveSafeCopy 1 'base ''IntervalSubscriptions
 
-$(makeAcidic ''EventSubscriptions ['getAllESubs, 'lookupESub, 'addESub, 'removeESubsForSensor])
+$(makeAcidic ''EventSubscriptions ['getAllESubs, 'lookupESub, 'addESub,
+                                   'removeESubsForSensor, 'removeESub])
 $(makeAcidic ''IntervalSubscriptions ['getAllISubs, 'addISub, 'lookupNextISub, 'removeISub])
 

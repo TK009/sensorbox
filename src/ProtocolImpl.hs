@@ -47,7 +47,10 @@ processRequest shared@Shared { sISubDB = intervalSubs
 
         return $ Success requestID
 
-    runRequest (Cancel requestID) = undefined
+    runRequest (Cancel requestID) = do
+        update intervalSubs $ RemoveISub requestID
+        update eventSubs $ RemoveESub requestID
+        return $ Success requestID
 
     runRequest (ForceEvent event sensor) = undefined
 
@@ -57,6 +60,7 @@ processRequest shared@Shared { sISubDB = intervalSubs
 parseNewData :: Sensor -> NewSensorData -> UTCTime -> SensorData
 parseNewData sensor (Data value) currentTime    =
     SensorData sensor (UntypedData value) currentTime
+
 parseNewData sensor (OldData timestamp value) _ =
     SensorData sensor (UntypedData value) $ parseTimestamp timestamp
 
