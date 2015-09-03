@@ -32,6 +32,7 @@ type Protocol = Request
 -- > Success 0
 --
 -- < Subscribe (OnInterval 10 Secs) (TTL 30 Mins)
+--     (ToIP "127.0.0.1:40004")
 --     ["Objects/Puistola/Temperature"] (Callback "localhost" 8094) "For drawing graph"
 -- > Success 24
 -- >c Results 24 [SensorData "Objects/Puistola/Temperature" "42" 2015-09-02 11:37:59.58345 UTC]
@@ -44,6 +45,7 @@ type Protocol = Request
 -- > Success 0
 --
 -- < Subscribe (OnIntervalRaw 20 Secs) (TTL 360 Days)
+--     (ToIP "127.0.0.1:40004")
 --     ["Objects/Puistola/VirtualPullCommands/Moisture1"]
 --     "Objects/Puistola/Derp"
 -- >c DR 6
@@ -52,7 +54,7 @@ type Protocol = Request
 --
 --
 data Request = Write Sensor NewSensorData -- ^ Save a new value [and Sensor]
-             | Subscribe SubType TTL [Sensor] MetaData
+             | Subscribe SubType TTL RCallback [Sensor] MetaData
              | Cancel RequestID        -- ^ Cancel a Subscription
              | ForceEvent Event Sensor -- ^ Mainly for restarting Output device subs
              | Erase Sensor            -- ^ Removes the Sensor
@@ -64,12 +66,13 @@ data NewSensorData = Data Text
 data Timestamp = UTC UTCTime
                | UnixTime Double  -- Double to allow fractions of seconds
 
+data SubType = OnInterval Double TimeUnit
+             | Event Event
+
 -- | Raw versions will have callback responses as Text values only
 -- and will accept responses as write requests to sensor given in MetaData field
-data SubType = OnInterval Double TimeUnit
-             | OnIntervalRaw Double TimeUnit
-             | Event Event
-             | EventRaw Event
+data RCallback = ToIP Text    -- ^ IP + port string, for example "127.0.0.1:9444"
+               | ToIPRaw Text -- ^ Same as above but different protocol behaviour
 
 type MetaData = Text
 
