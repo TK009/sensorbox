@@ -54,12 +54,18 @@ setSensorData sensorData@SensorData {sdSensor = sensor} = do
     LatestStore allData <- get
     put . LatestStore $ Map.insert sensor sensorData allData
 
+eraseSensorData :: Sensor -> Update LatestStore ()
+eraseSensorData sensor = do
+    LatestStore allData <- get
+    put . LatestStore $ Map.delete sensor allData
+
 
 -- * TH stuff
 
 deriveSafeCopy 1 'base ''UntypedData
 deriveSafeCopy 1 'base ''SensorData
 deriveSafeCopy 1 'base ''LatestStore
-$(makeAcidic ''LatestStore ['lookupSensorData, 'lookupSensorDatas, 'setSensorData])
+$(makeAcidic ''LatestStore ['lookupSensorData, 'lookupSensorDatas,
+                            'setSensorData, 'eraseSensorData])
 
 

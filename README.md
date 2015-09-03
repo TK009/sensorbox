@@ -25,7 +25,6 @@ Missing parts of the system:
   * Object support for interval subs
 * Communication
   * Callbacks
-  * Protocol implementation
   * Socket controller
 * Subscriptions
   * Removing expired event subs

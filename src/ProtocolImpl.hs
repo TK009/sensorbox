@@ -51,7 +51,9 @@ processRequest shared@Shared { sISubDB = intervalSubs
 
     runRequest (ForceEvent event sensor) = triggerEventSubs shared sensor event
 
-    runRequest (Erase sensor) = undefined
+    runRequest (Erase sensor) = do
+        update latestStore $ EraseSensorData sensor
+        return $ Success 0
 
 -- | Parse new data applying the given currentTime to the values when needed
 parseNewData :: Sensor -> NewSensorData -> UTCTime -> SensorData
