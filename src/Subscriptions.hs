@@ -58,11 +58,11 @@ data ISub = ISub
 data Event = OnChange  -- ^ Triggers whenever value of a sensor changes
            | OnUpdate  -- ^ Triggers every time an update on value is got (even if same)
            | OnAttach  -- ^ Triggers when a new `Sensor` is attached (the first value)
-           deriving (Show, Typeable, Eq)
+           deriving (Show, Typeable, Eq, Read)
 
 data Callback = IP String    -- ^ Connect and send to this URL
               | IPRaw String -- ^ Raw protocol behaviour
-              deriving (Show, Eq, Typeable)
+              deriving (Show, Eq, Typeable, Read, Ord)
 
 
 -- -- | Send another callback or internal write event

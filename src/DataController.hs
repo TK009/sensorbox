@@ -21,7 +21,9 @@ startIntervalThread = forkIO . intervalLoop
 
 -- | Loops and executes interval subscriptions
 intervalLoop :: Shared -> IO ()
-intervalLoop Shared {sISubDB = intervalSubs, sLatestStore = latestStore} = loop
+intervalLoop Shared {sISubDB = intervalSubs
+                    , sLatestStore = latestStore
+                    , sConnections = conns } = loop
   where
     loop :: IO ()
     loop = do
@@ -31,7 +33,7 @@ intervalLoop Shared {sISubDB = intervalSubs, sLatestStore = latestStore} = loop
         case mTriggered of
             Just ISub {isSubData = subData, isSensors = sensors} -> do
                 sensorDatas <- query latestStore $ LookupSensorDatas sensors
-                sendCallback subData sensorDatas
+                sendCallback conns subData sensorDatas
             Nothing  -> return ()
 
         newCurrentTime <- getCurrentTime
@@ -50,7 +52,7 @@ intervalLoop Shared {sISubDB = intervalSubs, sLatestStore = latestStore} = loop
 
 -- | trigger events and save data
 processData :: Shared -> SensorData -> IO ()
-processData Shared {sESubDB = eventSubsDB, sLatestStore = latestStore}
+processData Shared {sESubDB = eventSubsDB, sLatestStore = latestStore, sConnections = conns}
             newData@SensorData { sdSensor = sensor
                                , sdValue = newValue
                                , sdTimestamp = newTime} = do
@@ -60,7 +62,7 @@ processData Shared {sESubDB = eventSubsDB, sLatestStore = latestStore}
             onChangeSubs = filterSubs OnChange
             onUpdateSubs = filterSubs OnUpdate
             onAttachSubs = filterSubs OnAttach
-            callback     = flip sendCallback [newData] . esSubData
+            callback     = flip (sendCallback conns) [newData] . esSubData
 
         -- Update events happen always
         mapM_ callback onUpdateSubs
@@ -80,8 +82,9 @@ processData Shared {sESubDB = eventSubsDB, sLatestStore = latestStore}
         return ()
 
 triggerEventSubs :: Shared -> Sensor -> Event -> IO ImmediateResponse
-triggerEventSubs Shared {sESubDB = eventSubsDB,
-                         sLatestStore = latestStore} sensor event = do
+triggerEventSubs Shared { sESubDB = eventSubsDB
+                        , sLatestStore = latestStore
+                        , sConnections = conns} sensor event = do
 
     eventSubs <- query eventSubsDB $ LookupESub sensor
 
@@ -96,7 +99,7 @@ triggerEventSubs Shared {sESubDB = eventSubsDB,
 
         case mLastData of
             Just lastData ->
-                let callback = flip sendCallback [lastData] . esSubData
+                let callback = flip (sendCallback conns) [lastData] . esSubData
                 in do
                     mapM_ callback filteredSubs
                     return $ Success 0

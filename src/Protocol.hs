@@ -6,7 +6,7 @@ import Data.Text (Text)
 import TextShow.TH
 
 import Subscriptions (Event, RequestID)
-import LatestStore (Sensor, SensorData, UntypedData)
+import LatestStore (Sensor, SensorData)
 
 
 -- TODO: is a version system needed?
@@ -62,21 +62,26 @@ data Request = Write Sensor NewSensorData -- ^ Save a new value [and Sensor]
              | Cancel RequestID        -- ^ Cancel a Subscription
              | ForceEvent Event Sensor -- ^ Mainly for restarting Output device subs
              | Erase Sensor            -- ^ Removes the Sensor
+             deriving (Read, Show)
 
 -- | Simpler version for protocol
 data NewSensorData = Data Text
                    | OldData Timestamp Text
+                   deriving (Read, Show)
 
 data Timestamp = UTC UTCTime
                | UnixTime Double  -- Double to allow fractions of seconds
+               deriving (Read, Show)
 
 data SubType = OnInterval Double TimeUnit
              | Event Event
+             deriving (Read, Show)
 
 -- | Raw versions will have callback responses as Text values only
 -- and will accept responses as write requests to sensor given in MetaData field
 data RCallback = ToIP String    -- ^ IP + port string, for example "127.0.0.1:9444"
                | ToIPRaw String -- ^ Same as above but different protocol behaviour
+               deriving (Read, Show)
 
 type MetaData = Text
 
@@ -85,6 +90,7 @@ data Response = Success RequestID
               | Failure RequestID Code Text
               | Results RequestID [SensorData]
               | Raw Text
+              deriving (Read, Show)
 
 -- | This means response to the connection of the request in question
 type ImmediateResponse = Response
@@ -92,11 +98,13 @@ type ImmediateResponse = Response
 type Code = Int
 data TTL  = TTL Double TimeUnit
           | TTLUntil Timestamp
+          deriving (Read, Show)
 
 data TimeUnit = Secs
               | Mins
               | Hours
               | Days
+              deriving (Read, Show)
 
 
 $(deriveTextShow ''Request)

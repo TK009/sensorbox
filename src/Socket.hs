@@ -1,11 +1,9 @@
 module Socket where
 
-import Control.Monad.IO.Class (liftIO)
-
+import Data.Maybe (listToMaybe)
 import Network.Simple.TCP (Socket, SockAddr)
 import Network.Socket (socketToHandle)
-import Control.Exception (try, finally, displayException, ErrorCall)
-import Control.Concurrent (forkIO)
+import Control.Exception (finally) -- try, displayException, ErrorCall)
 import System.IO (Handle, hSetBuffering, BufferMode (..), hClose, IOMode (..), hGetChar)
 import Data.Text.IO (hPutStrLn)
 import TextShow
@@ -17,10 +15,9 @@ import Shared
 
 handleConn :: Shared -> (Socket, SockAddr) -> IO ()
 handleConn s (connectionSocket, remoteAddr) = do
-    threadId <- forkIO $ do
-        handle <- socketToHandle connectionSocket ReadWriteMode
-        receiveRequest s handle `finally` hClose handle
-    putStrLn $ "[INFO] Forked (thread:" ++ show threadId ++ ") Connection from " ++ show remoteAddr
+    handle <- socketToHandle connectionSocket ReadWriteMode
+    putStrLn $ "[INFO] Forked: Connection from " ++ show remoteAddr
+    receiveRequest s handle `finally` hClose handle
     return ()
 
 receiveRequest :: Shared -> Handle -> IO ()
@@ -54,7 +51,7 @@ sendResponse handle (Raw responseText) = hPutStrLn handle responseText
 sendResponse handle response           = hPutStrLn handle $ showt response
 
 parseRequest :: String -> Maybe Request
-parseRequest req = undefined
+parseRequest = fmap fst . listToMaybe . reads
 
 
 

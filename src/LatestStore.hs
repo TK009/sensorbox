@@ -21,14 +21,14 @@ import TextShow.TH
 
 type Sensor = Text
 
-newtype UntypedData = UntypedData Text deriving (Eq, Show)
+newtype UntypedData = UntypedData Text deriving (Eq, Show, Read)
 
 data SensorData = SensorData
     { sdSensor :: Sensor
     , sdValue  :: UntypedData
     , sdTimestamp :: UTCTime
     }
-    deriving (Show, Typeable)
+    deriving (Show, Typeable, Read)
 
 -- * Latest Store datatype
 

@@ -29,20 +29,24 @@ processRequest shared@Shared { sISubDB = intervalSubs
         requestID   <- atomically $ getNextID shared
 
         let expiry   = parseTTL ttl currentTime
-            callback = parseCallback callb
-            subData  = SubData requestID currentTime expiry callback meta
+            mCallback = parseCallback callb
 
-        case subType of
-            OnInterval rawInterval timeUnit ->
-                let interval = parseDuration timeUnit rawInterval
-                    isub = ISub sensors interval subData
-                in update intervalSubs $ AddISub isub
+        case mCallback of
+            Nothing -> return $ Failure 0 400 "Invalid callback address."
+            Just callback -> do
+                let subData  = SubData requestID currentTime expiry callback meta
 
-            Event event ->
-                let esubs = map (\ sensor -> ESub sensor event subData) sensors
-                in mapM_ (update eventSubs . AddESub) esubs
+                case subType of
+                    OnInterval rawInterval timeUnit ->
+                        let interval = parseDuration timeUnit rawInterval
+                            isub = ISub sensors interval subData
+                        in update intervalSubs $ AddISub isub
 
-        return $ Success requestID
+                    Event event ->
+                        let esubs = map (\ sensor -> ESub sensor event subData) sensors
+                        in mapM_ (update eventSubs . AddESub) esubs
+
+                return $ Success requestID
 
     runRequest (Cancel requestID) = do
         update intervalSubs $ RemoveISub requestID
@@ -63,10 +67,22 @@ parseNewData sensor (Data value) currentTime    =
 parseNewData sensor (OldData timestamp value) _ =
     SensorData sensor (UntypedData value) $ parseTimestamp timestamp
 
--- TODO Validate it
-parseCallback :: RCallback -> Callback
-parseCallback (ToIP callback)    = IP callback
-parseCallback (ToIPRaw callback) = IPRaw callback
+-- TODO better validation
+parseCallback :: RCallback -> Maybe Callback
+parseCallback (ToIP callback)    =
+    if hostPortValidate callback
+    then Just $ IP callback
+    else Nothing
+parseCallback (ToIPRaw callback) =
+    if hostPortValidate callback
+    then Just $ IPRaw callback
+    else Nothing
+
+-- | Some simple validation for format "123.123.123.123:1234"
+hostPortValidate :: String -> Bool
+hostPortValidate hostPort = colons == 1 && dots == 3
+  where colons = length $ filter (== ':') hostPort
+        dots   = length $ filter (== '.') hostPort
 
 -- | parse TTL respective to given currentTime
 parseTTL :: TTL -> UTCTime -> UTCTime

@@ -25,6 +25,8 @@ Missing parts of the system:
   * Callbacks
 * Subscriptions
   * Removing expired event subs
+* Persistency controller
+  * Create checkpoints
 * Logging
 * More documentation
 
