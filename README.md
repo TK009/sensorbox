@@ -23,9 +23,9 @@ Status of developement
 Missing parts of the system:
 * Communication
   * Callbacks
-  * Socket controller
 * Subscriptions
   * Removing expired event subs
+* Logging
 * More documentation
 
 

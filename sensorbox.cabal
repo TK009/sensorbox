@@ -69,6 +69,9 @@ executable sensorbox
                      , ivar-simple
                      , containers >=0.5 && <0.6
                      , stm >=2.4 && <2.5
+                     , network >=2.6 && <2.7
+                     , network-simple >= 0.4 && < 0.5
+                     , text-show ==2
   
   -- Directories containing source files.
   hs-source-dirs:      src

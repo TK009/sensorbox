@@ -1,7 +1,9 @@
+{-# LANGUAGE TemplateHaskell #-}
 module Protocol where
 
 import Data.Time.Clock (UTCTime)
 import Data.Text (Text)
+import TextShow.TH
 
 import Subscriptions (Event, RequestID)
 import LatestStore (Sensor, SensorData, UntypedData)
@@ -95,4 +97,14 @@ data TimeUnit = Secs
               | Mins
               | Hours
               | Days
+
+
+$(deriveTextShow ''Request)
+$(deriveTextShow ''NewSensorData)
+$(deriveTextShow ''Timestamp)
+$(deriveTextShow ''SubType)
+$(deriveTextShow ''RCallback)
+$(deriveTextShow ''Response)
+$(deriveTextShow ''TTL)
+$(deriveTextShow ''TimeUnit)
 

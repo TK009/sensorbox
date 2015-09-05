@@ -2,8 +2,12 @@
 import Data.Acid
 import Control.Concurrent.STM.TVar
 
+import Control.Monad (unless)
 import Data.Foldable (maximumBy)
 import Data.Function (on)
+import System.Environment (getArgs)
+import System.Exit (exitSuccess)
+import Network.Simple.TCP (serve, HostPreference (..))
 
 import DataController
 import Subscriptions
@@ -11,9 +15,19 @@ import LatestStore
 import Shared
 import Socket
 
+usage :: String
+usage = "Usage: sensorbox <listen interface> <listen port>"
 
 main :: IO ()
 main = do
+    args <- getArgs
+    unless (length args == 2) $ do
+        putStrLn usage
+        exitSuccess
+
+    let interface = head args
+        port      = args !! 1
+
     latestValues <- openLocalState emptyLatestStore
     eventSubs    <- openLocalState emptyEventSubscriptions
     intervalSubs <- openLocalState emptyIntervalSubscriptions
@@ -39,6 +53,8 @@ main = do
     let shared = Shared latestValues eventSubs intervalSubs nextReqID 
 
     _ <- startIntervalThread shared
+
+    serve (Host interface) port $ handleConn shared
 
     return ()
 

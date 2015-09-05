@@ -2,6 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module LatestStore where
 
 import Data.Maybe (mapMaybe)
@@ -13,7 +14,8 @@ import Control.Monad.State (get, put)
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.Text (Text)
-import Data.Time (UTCTime)
+import Data.Time (DiffTime, UTCTime, Day)
+import TextShow.TH
 
 -- * Sensor types
 
@@ -68,4 +70,9 @@ deriveSafeCopy 1 'base ''LatestStore
 $(makeAcidic ''LatestStore ['lookupSensorData, 'lookupSensorDatas,
                             'setSensorData, 'eraseSensorData])
 
+$(deriveTextShow ''DiffTime)
+$(deriveTextShow ''UTCTime)
+$(deriveTextShow ''Day)
+$(deriveTextShow ''SensorData)
+$(deriveTextShow ''UntypedData)
 

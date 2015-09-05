@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Subscriptions where
 
 import Control.Monad.Reader (ask)
@@ -21,6 +22,7 @@ import Data.Foldable (toList)
 import Data.Time (UTCTime, NominalDiffTime, diffUTCTime, addUTCTime)
 import Data.Int (Int64)
 import Control.Monad (guard)
+import TextShow.TH
 
 import LatestStore (Sensor)
 
@@ -222,4 +224,11 @@ deriveSafeCopy 1 'base ''IntervalSubscriptions
 $(makeAcidic ''EventSubscriptions ['getAllESubs, 'lookupESub, 'addESub,
                                    'removeESubsForSensor, 'removeESub])
 $(makeAcidic ''IntervalSubscriptions ['getAllISubs, 'addISub, 'lookupNextISub, 'removeISub])
+
+$(deriveTextShow ''Event)
+$(deriveTextShow ''Callback)
+$(deriveTextShow ''SubData)
+$(deriveTextShow ''ESub)
+$(deriveTextShow ''ISub)
+$(deriveTextShow ''NominalDiffTime)
 
