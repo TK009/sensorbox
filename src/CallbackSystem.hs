@@ -1,11 +1,15 @@
 module CallbackSystem where
 
 
-import Network.Simple.TCP (connect, HostName, ServiceName, Socket, SockAddr)
-import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad.Catch (MonadMask)
+import Network.Simple.TCP (connect, HostName, ServiceName)
+import Network.Socket (socketToHandle)
+-- import Control.Monad.IO.Class (MonadIO, liftIO)
+import System.IO (Handle, IOMode (..))
+import Control.Concurrent.STM.TVar (readTVarIO, modifyTVar')
+import Control.Concurrent.STM (atomically)
+import Control.Exception (try, IOException, displayException)
+
 import qualified Data.Map as Map
-import Control.Concurrent.STM.TVar (readTVarIO)
 
 
 import Subscriptions
@@ -13,21 +17,47 @@ import Shared
 import LatestStore (SensorData)
 
 -- | Re-uses connection if it exists, otherwise creates a new
-withConnection :: (MonadIO m, MonadMask m)
-               => OpenConnections
+-- withConnection %connectionsVar% %callbackAddr% %normalFunc% %funcForRaw%
+withConnection :: OpenConnections
                -> Callback
-               -> ((Socket, SockAddr) -> m r)
-               -> m r
-withConnection connectionsVar callbackAddr func = do
-    connections <- liftIO $ readTVarIO connectionsVar
+               -> (Handle -> IO r)
+               -> (Handle -> IO r)
+               -> IO r
+withConnection connectionsVar callbackAddr normalFunc funcForRaw = do
+    connections <- readTVarIO connectionsVar
 
     let existingConn = Map.lookup callbackAddr connections
 
     case existingConn of
-        Just oldConnection -> undefined -- Try send, if fails then reconnect
-        Nothing -> connect host port func -- Connect, get socket, send, save connection
+        Just oldConnection -> do -- Try send, if fails then reconnect
+
+            r <- try $ func oldConnection
+
+            case r of
+                Left e -> do -- Reconnect
+                    putStrLn $ "[DEBUG] Connection error: " ++ displayException (e :: IOException)
+                    connect host port newConnFunction
+
+                Right res -> -- Success
+                    return res
+
+        Nothing -> -- Connect, get socket, send, save connection
+            connect host port newConnFunction
+
   where
     (host, port, isRawResponse) = parseCallback callbackAddr
+
+    func = if isRawResponse then funcForRaw else normalFunc
+
+    -- newConnFunction :: (MonadIO m, MonadMask m)
+    --                => (Socket, SockAddr) -> m r
+    newConnFunction (sock, _) = do
+            sockHandle <- socketToHandle sock ReadWriteMode
+            atomically $
+                modifyTVar' connectionsVar $
+                    Map.insert callbackAddr sockHandle
+            func sockHandle
+
 
 -- | parses callback, results in (host, port, isRawResponse)
 parseCallback :: Callback -> (HostName, ServiceName, Bool)
@@ -37,7 +67,7 @@ parseCallback ipPort = case ipPort of
   where
     parseIPStr str isRaw =
       let (host, port) = break (== ':') str
-      in (host, port, isRaw)
+      in (host, tail port, isRaw)
 
 sendCallback :: OpenConnections -> SubData -> [SensorData] -> IO ()
 sendCallback conns = undefined
