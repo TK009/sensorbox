@@ -4,31 +4,37 @@ sensorbox - core
 
 This is a part of Internet of Things (IoT) server architecture with simplicity and
 modularity in mind. It aggregates sensor data from external programs and routes
-data through single core logic point where it can be filtered to `Callbacks`
-which are defined by `Subscriptions` and sent to some services.
+data through single core logic point where it can be filtered  by `Subscriptions`
+and sent to `Callback` addresses over TCP.
 
-So all data should be sent to this component which sends it the next components.
-Input could be sensor devices or virtual sensor aggregations and services could
-be databases, REST HTTP services or even controllers for physical devices. For
-some examples see [Relevant Components](#relevant-components)
+So all data should be sent to this core component which sends it to any number
+of components. Inputs could be sensor devices or virtual sensor aggregations and
+services could be databases, REST HTTP services or even controllers for
+physical devices. For some examples see [Relevant
+Components](#relevant-components)
 
-Follows the basic ideas of the Open Messaging Interface (O-MI) and Open Data
-Format (O-DF) standards but implements its own simplified protocol on TCP. This
-program is supposed to be only the core and all kinds of services can be built
-around it, including but not limited to O-MI and O-DF.
+This project follows the basic ideas of the Open Messaging Interface (O-MI) and
+Open Data Format (O-DF) standards but implements its own simplified protocol on
+TCP. This program is supposed to be only the core and all kinds of services
+should be built around it, including but not limited to O-MI and O-DF.
 
 Status of developement
 ----------------------
 
-Missing parts of the system:
+Not yet usable. Missing parts of the system:
 * Communication
-  * Callbacks
+  * Callback logic
 * Subscriptions
   * Removing expired event subs
 * Persistency controller
   * Create checkpoints
+
+TODO
+-----
+
 * Logging
 * More documentation
+* Tests?
 
 
 Features
@@ -74,7 +80,7 @@ Relevant Components
 * Connecting to arduino with firmata: 
   [arduinoserv](https://github.com/TK009/arduinoserv)
 
-* Planned: A simple MetaData service for configuring and setting up devices and
+* Planned: A simple MetaData service for providing metadata about, configuring and setting up devices and
   subscriptions from a single point.
 
 Licence

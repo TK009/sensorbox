@@ -15,6 +15,7 @@ import qualified Data.Map as Map
 import Subscriptions
 import Shared
 import LatestStore (SensorData)
+import Socket (sendResponse)
 
 -- | Re-uses connection if it exists, otherwise creates a new
 -- withConnection %connectionsVar% %callbackAddr% %normalFunc% %funcForRaw%
@@ -30,6 +31,7 @@ withConnection connectionsVar callbackAddr normalFunc funcForRaw = do
 
     case existingConn of
         Just oldConnection -> do -- Try send, if fails then reconnect
+            -- TODO: How does the threading sort out? How do we mark connection as busy
 
             r <- try $ func oldConnection
 
@@ -69,6 +71,20 @@ parseCallback ipPort = case ipPort of
       let (host, port) = break (== ':') str
       in (host, tail port, isRaw)
 
+-- | Sends callback specified by 'SubData' and send all ['SensorData']
 sendCallback :: OpenConnections -> SubData -> [SensorData] -> IO ()
-sendCallback conns = undefined
+sendCallback conns SubData {sCallback = callback, sRequestID = reqID} sensorData =
+    withConnection conns callback handleCallback handleRawCallback
+  where
+    handleCallback handle = do
+        sendResponse handle $ Results reqID sensorData
+        -- TODO: listen response
+    handleRawCallback handle = do
+        let rawResults = case sensorData of
+                [single] -> Raw $ showt $ sdValue single
+                many     -> Raw $ showt $ map (\ sd -> (sdSensor sd, sdValue sd)) many
+                []       -> Raw ""
+
+        sendResponse handle rawResults
+        -- TODO: listen response
 
