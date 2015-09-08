@@ -1,8 +1,8 @@
 
 import Data.Acid
 import Control.Concurrent.STM.TVar
+import Control.Concurrent.STM.TQueue
 
-import qualified Data.Map as Map
 import Control.Monad (unless)
 import Data.Foldable (maximumBy)
 import Data.Function (on)
@@ -51,9 +51,9 @@ main = do
 
     nextReqID <- newTVarIO $ maxID + 1
 
-    emptyConnections <- newTVarIO Map.empty
+    emptyTQ <- newTQueueIO
 
-    let shared = Shared latestValues eventSubs intervalSubs nextReqID emptyConnections
+    let shared = Shared latestValues eventSubs intervalSubs nextReqID emptyTQ
 
     _ <- startIntervalThread shared
 

@@ -5,6 +5,9 @@ import Data.Time.Clock (UTCTime, getCurrentTime, addUTCTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import Data.Acid
 import Control.Concurrent.STM (atomically)
+import System.IO (Handle)
+import Data.Text.IO (hPutStrLn)
+import TextShow
 
 import Protocol
 import Shared
@@ -58,6 +61,12 @@ processRequest shared@Shared { sISubDB = intervalSubs
     runRequest (Erase sensor) = do
         update latestStore $ EraseSensorData sensor
         return $ Success 0
+
+
+sendResponse :: Handle -> Response -> IO ()
+sendResponse handle (Raw responseText) = hPutStrLn handle responseText
+sendResponse handle response           = hPutStrLn handle $ showt response
+
 
 -- | Parse new data applying the given currentTime to the values when needed
 parseNewData :: Sensor -> NewSensorData -> UTCTime -> SensorData

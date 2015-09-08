@@ -1,16 +1,13 @@
 module Shared where
 
 import Data.Acid (AcidState)
-import Data.Map.Strict (Map)
-import Control.Concurrent.STM       (STM)
+import Control.Concurrent.STM       (STM, atomically)
 import Control.Concurrent.STM.TVar  (TVar, readTVar, writeTVar)
-import Network.Simple.TCP (SockAddr)
-import System.IO (Handle)
+import Control.Concurrent.STM.TQueue (TQueue, writeTQueue)
 
-import LatestStore (LatestStore)
-import Subscriptions (EventSubscriptions, IntervalSubscriptions, RequestID, Callback)
+import LatestStore (LatestStore, SensorData)
+import Subscriptions (EventSubscriptions, IntervalSubscriptions, RequestID, SubData)
 
-type OpenConnections = TVar (Map Callback Handle)
 
 -- | Shared state
 data Shared = Shared
@@ -18,7 +15,7 @@ data Shared = Shared
     , sESubDB :: AcidState EventSubscriptions
     , sISubDB :: AcidState IntervalSubscriptions
     , sNextRequestID :: TVar RequestID
-    , sConnections :: OpenConnections
+    , sCallbackQueue :: TQueue (SubData, [SensorData])
     }
 
 getNextID :: Shared -> STM RequestID
@@ -27,4 +24,7 @@ getNextID Shared {sNextRequestID = nextIDVar} = do
     writeTVar nextIDVar $ nextID + 1
     return nextID
 
+sendCallback :: Shared -> SubData -> [SensorData] -> IO ()
+sendCallback Shared {sCallbackQueue = cbQueue} subdata sensordata =
+    atomically . writeTQueue cbQueue $ (subdata, sensordata)
 
