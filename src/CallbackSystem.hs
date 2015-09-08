@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module CallbackSystem where
 
 
@@ -6,28 +7,39 @@ import Network.Simple.TCP (connect, HostName, ServiceName)
 import Network.Socket (socketToHandle)
 -- import Control.Monad.IO.Class (MonadIO, liftIO)
 import System.IO (Handle, IOMode (..))
-import Control.Concurrent.STM.TVar (readTVarIO, modifyTVar')
+import Control.Concurrent (forkIO, ThreadId)
+import Control.Concurrent.STM.TVar (TVar, newTVarIO, readTVar, writeTVar)
+import Control.Concurrent.STM.TQueue (TQueue, newTQueue, readTQueue, writeTQueue)
 import Control.Concurrent.STM (atomically)
 import Control.Exception (try, IOException, displayException)
 
+import Data.Map (Map)
 import qualified Data.Map as Map
+import qualified Data.Text as Text
+
+import TextShow
 
 
 import Subscriptions
 import Shared
+import Protocol
 import Socket (receiveRequest)
-import LatestStore (SensorData)
-import ProtocolImpl (sendResponse)
+import LatestStore (SensorData (..))
+import ProtocolImpl (processRequest, sendResponse)
 
 
-type ConnectionQueue = TQueue (SubData, SensorData)
+type ConnectionQueue = TQueue (SubData, [SensorData])
 
 -- | One 'TQueue' for connection thread, only the connection thread owning a
 -- TQueue should remove it from the Map.
 type OpenConnections = TVar (Map Callback ConnectionQueue)
 
--- | This should be forked. Routes callbacks from shared callbackQueue to
+-- | Routes callbacks from shared callbackQueue to
 -- right connection handlers or create a new.
+startCallbackSystem :: Shared -> IO ThreadId
+startCallbackSystem sh = forkIO $ callbackLoop sh
+
+-- | This should be forked.
 callbackLoop :: Shared -> IO ()
 callbackLoop shared @ Shared {sCallbackQueue = cbQueue} = do
     connectionsVar <- newTVarIO Map.empty
@@ -35,15 +47,15 @@ callbackLoop shared @ Shared {sCallbackQueue = cbQueue} = do
     let loop = do
             cbData @ (SubData {sCallback = callbackAddr}, _) <- atomically $ readTQueue cbQueue
 
-            connQueue <- getConnection shared callbackAddr
-            atomically $ writeTQueue connQueue 
+            connQueue <- getConnection shared connectionsVar callbackAddr
+            atomically $ writeTQueue connQueue cbData
 
             loop
     loop
 
 
 -- | Create a new connection or reuse old connection
-getConnection :: Shared -> OpenConnections -> Callback -> IO ConnectionQUeue
+getConnection :: Shared -> OpenConnections -> Callback -> IO ConnectionQueue
 getConnection shared connectionsVar callbackAddr = do
     conn <- atomically $ do  -- STM monad: Right newConn, Left oldConn
         connections <- readTVar connectionsVar
@@ -60,46 +72,57 @@ getConnection shared connectionsVar callbackAddr = do
     case conn of  -- IO monad
         Left  old -> return old
         Right new -> do
-            forkCallbackAgent new
+            _ <- forkCallbackAgent new
             return new
   where
     (host, port, isRawResponse) = parseCallback callbackAddr
 
-    handleCallbacks = if isRawResponse then handleRawCallbacks else handleNormalCallbacks
-
-    forkCallbackAgent handleQueue = forkIO $ connect host port (newConnFunction handleQueue)
+    forkCallbackAgent handleQueue = do
+        putStrLn $ "[DEBUG] Connecting callback " ++ show callbackAddr
+        forkIO $ connect host port (newConnFunction handleQueue)
 
     newConnFunction queue (sock, _) = do
         sockHandle <- socketToHandle sock ReadWriteMode
         handleCallbacks queue sockHandle
 
-    handleNormalCallback queue handle = do
+
+    handleCallbacks :: ConnectionQueue -> Handle -> IO ()
+    handleCallbacks queue handle = do
         (subData, sensorData) <- atomically $ readTQueue queue
         let reqID = sRequestID subData
+            rawResults = case sensorData of
+                [single] -> Raw $ showt $ sdValue single
+                []       -> Raw ""
+                many     -> Raw $ showt $ map (sdSensor &&& sdValue) many
+            normalResults = Results reqID sensorData
+            results = if isRawResponse then rawResults else normalResults
 
         -- 1. send
-        sendResponse handle $ Results reqID sensorData
+        r1 <- try $ sendResponse handle results
 
-        -- 2. listen response
-        r <- try $ receiveRequest shared handle
-        case r of
+        case r1 of
             Left e ->
-                putStrLn "[WARN] Exception while waiting response from callback: " ++
-                    show callbackAddr ++ ":" ++ displayException e
-            Right -> -- 3. execute followup request
-                -- TODO:
+                putStrLn $ "[DEBUG] Connection error: " ++
+                    displayException (e :: IOException)
+            Right _ -> do -- 2. listen response
+                let rawResponse line = do
+                        _ <- processRequest shared $
+                            Write (sMetaData subData) (Data $ Text.pack line)
+                        return ()
+                    parseFail = if isRawResponse
+                        then rawResponse
+                        else (\ line ->
+                            putStrLn $ "[WARN] Received invalid response from callback: " ++
+                                show callbackAddr ++ ": " ++ line)
 
-
-
-
-    handleRawCallbac handle = do
-        let rawResults = case sensorData of
-                [single] -> Raw $ showt $ sdValue single
-                many     -> Raw $ showt $ map (sdSensor &&& sdValue) many
-                []       -> Raw ""
-
-        sendResponse handle rawResults
-        -- TODO: listen response
+                r2 <- try $ receiveRequest shared handle parseFail
+                case r2 of
+                    Left e ->
+                        putStrLn $ "[WARN] Exception while waiting response from callback: " ++
+                            show callbackAddr ++ ":" ++ displayException (e :: IOException)
+                    Right _ ->
+                        return ()
+        handleCallbacks queue handle
 
 
 -- | parses callback, results in (host, port, isRawResponse)
@@ -113,38 +136,6 @@ parseCallback ipPort = case ipPort of
       in (host, tail port, isRaw)
 
 
--------------------------
----- line of death ------
 
--- | Re-uses connection if it exists, otherwise creates a new
--- withConnection %connectionsVar% %callbackAddr% %normalFunc% %funcForRaw%
-withConnection :: OpenConnections
-               -> Callback
-               -> (Handle -> IO r)
-               -> (Handle -> IO r)
-               -> IO r
-withConnection connectionsVar callbackAddr normalFunc funcForRaw = do
-    connections <- readTVarIO connectionsVar
-
-    let existingConn = Map.lookup callbackAddr connections
-
-    case existingConn of
-        Just oldConnection -> do -- Try send, if fails then reconnect
-            -- TODO: How does the threading sort out? How do we mark connection as busy
-
-            r <- try $ func oldConnection
-
-            case r of
-                Left e -> do -- Reconnect
-                    putStrLn $ "[DEBUG] Connection error: " ++ displayException (e :: IOException)
-                    connect host port newConnFunction
-
-                Right res -> -- Success
-                    return res
-
-        Nothing -> -- Connect, get socket, send, save connection
-            connect host port newConnFunction
-
-  where
 
 

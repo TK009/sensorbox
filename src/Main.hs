@@ -15,6 +15,7 @@ import Subscriptions
 import LatestStore
 import Shared
 import Socket
+import CallbackSystem
 
 usage :: String
 usage = "Usage: sensorbox <listen interface> <listen port>"
@@ -37,6 +38,9 @@ main = do
     currentESubs <- query eventSubs GetAllESubs
     currentISubs <- query intervalSubs GetAllISubs
 
+    putStrLn $ "[INFO] Loaded " ++ show (length currentESubs) ++ " EventSubs and " ++
+        show (length currentISubs) ++ " IntervalSubs."
+
     let esubID = sRequestID . esSubData
         maxESubID = if null currentESubs
                     then 0
@@ -55,10 +59,15 @@ main = do
 
     let shared = Shared latestValues eventSubs intervalSubs nextReqID emptyTQ
 
-    _ <- startIntervalThread shared
+    iTId <- startIntervalThread shared
+    putStrLn $ "[INFO] Interval thread started: " ++ show iTId
+
+    csTId <- startCallbackSystem shared
+    putStrLn $ "[INFO] Interval thread started: " ++ show csTId
 
     serve (Host interface) port $ handleConn shared
 
+    putStrLn "[INFO] Main thread exiting..."
     return ()
 
 

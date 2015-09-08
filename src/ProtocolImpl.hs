@@ -89,9 +89,10 @@ parseCallback (ToIPRaw callback) =
 
 -- | Some simple validation for format "123.123.123.123:1234"
 hostPortValidate :: String -> Bool
-hostPortValidate hostPort = colons == 1 && dots == 3
+hostPortValidate hostPort = colons == 1 -- && dots == 3
   where colons = length $ filter (== ':') hostPort
-        dots   = length $ filter (== '.') hostPort
+        -- can be a hostname
+        -- dots   = length $ filter (== '.') hostPort 
 
 -- | parse TTL respective to given currentTime
 parseTTL :: TTL -> UTCTime -> UTCTime

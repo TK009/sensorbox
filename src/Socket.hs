@@ -22,17 +22,20 @@ handleConn s (connectionSocket, remoteAddr) = do
 receiveRequests :: Shared -> Handle -> IO ()
 receiveRequests s handle = loop
   where
-    loop = receiveRequest s handle >> loop
+    parseFail line = putStrLn $ "[WARN] parsing failed: " ++ line
+    loop = receiveRequest s handle parseFail >> loop
 
-receiveRequest :: Shared -> Handle -> IO Request
-receiveRequest s handle = do
+-- | Receive, parse and process a request from Handle,
+-- run the given function for any invalid requests.
+receiveRequest :: Shared -> Handle -> (String -> IO ()) -> IO ()
+receiveRequest s handle parseFailure = do
     line <- hGetCmd handle "" -- hGetLine handle
     case parseRequest line of
         Just cmd -> do
             result <- processRequest s cmd
             sendResponse handle result
         Nothing ->
-            putStrLn $ "[WARN] parsing failed: " ++ line
+            parseFailure line
 
   where
 
