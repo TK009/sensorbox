@@ -21,17 +21,18 @@ should be built around it, including but not limited to O-MI and O-DF.
 Status of developement
 ----------------------
 
-Not yet usable. Missing parts of the system:
+Usable for testing. Not yet ready for production. Missing parts of the system:
 * Communication
-  * Callback logic
+  * Better Response sensor data format
 * Subscriptions
   * Removing expired event subs
 * Persistency controller
-  * Create checkpoints
+  * Create db checkpoints (otherwise restarting might take increasingly long)
 
 TODO
 -----
 
+* A way to inspect current subscriptions
 * Logging
 * More documentation
 * Tests?
