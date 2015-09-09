@@ -105,15 +105,22 @@ getConnection shared connectionsVar callbackAddr = do
                 putStrLn $ "[DEBUG] Connection error: " ++
                     displayException (e :: IOException)
             Right _ -> do -- 2. listen response
-                let rawResponse line = do
+
+                -- Special responses for callbacks:
+                let rawResponse ""   = return ()
+                    rawResponse line = do
                         _ <- processRequest shared $
                             Write (sMetaData subData) (Data $ Text.pack line)
                         return ()
+
+                    normalResponse ""   = return ()
+                    normalResponse line =
+                        putStrLn $ "[WARN] Received invalid response from callback: " ++
+                            show callbackAddr ++ ": " ++ line
+
                     parseFail = if isRawResponse
                         then rawResponse
-                        else (\ line ->
-                            putStrLn $ "[WARN] Received invalid response from callback: " ++
-                                show callbackAddr ++ ": " ++ line)
+                        else normalResponse
 
                 r2 <- try $ receiveRequest shared handle parseFail
                 case r2 of

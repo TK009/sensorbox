@@ -78,8 +78,9 @@ processData shared@Shared { sESubDB = eventSubsDB
                         mapM_ callback onChangeSubs
                     update latestStore $ SetSensorData newData
 
-            Nothing ->   -- New data
+            Nothing -> do  -- New data
                 mapM_ callback onAttachSubs
+                update latestStore $ SetSensorData newData
 
         return ()
 

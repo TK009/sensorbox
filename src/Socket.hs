@@ -3,7 +3,7 @@ module Socket where
 import Data.Maybe (listToMaybe)
 import Network.Simple.TCP (Socket, SockAddr)
 import Network.Socket (socketToHandle)
-import Control.Exception (finally) -- try, displayException, ErrorCall)
+import Control.Exception (catch, displayException, IOException) -- try, displayException, ErrorCall)
 import System.IO (Handle, hSetBuffering, BufferMode (..), hClose, IOMode (..), hGetChar)
 
 import Protocol
@@ -16,8 +16,13 @@ handleConn s (connectionSocket, remoteAddr) = do
     handle <- socketToHandle connectionSocket ReadWriteMode
     hSetBuffering handle LineBuffering
     putStrLn $ "[INFO] Forked: Connection from " ++ show remoteAddr
-    receiveRequests s handle `finally` hClose handle
+    catch (receiveRequests s handle) displayError
+    hClose handle -- Closing probably not needed
+    putStrLn $ "[INFO] Closed: Connection from" ++ show remoteAddr
     return ()
+  where
+      displayError e =
+          putStrLn $ "[DEBUG] " ++ show remoteAddr ++ " " ++ displayException (e :: IOException)
 
 receiveRequests :: Shared -> Handle -> IO ()
 receiveRequests s handle = loop
@@ -48,7 +53,7 @@ receiveRequest s handle parseFailure = do
             ';'  -> return partial
             '\n' -> return partial
             '\r' -> hGetCmd handle partial
-            _    -> hGetCmd handle (partial ++ [chr])
+            c    -> hGetCmd handle (partial ++ [c])
 
 
 parseRequest :: String -> Maybe Request
