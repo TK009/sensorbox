@@ -23,6 +23,7 @@ import Data.Time (UTCTime, NominalDiffTime, diffUTCTime, addUTCTime)
 import Data.Int (Int64)
 import Control.Monad (guard)
 import TextShow.TH
+import TextShow (TextShow, showb, fromString)
 
 import LatestStore (Sensor)
 
@@ -230,5 +231,6 @@ $(deriveTextShow ''Callback)
 $(deriveTextShow ''SubData)
 $(deriveTextShow ''ESub)
 $(deriveTextShow ''ISub)
-$(deriveTextShow ''NominalDiffTime)
+instance TextShow NominalDiffTime where
+    showb = fromString . show
 

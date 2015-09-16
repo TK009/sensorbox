@@ -63,7 +63,7 @@ main = do
     putStrLn $ "[INFO] Interval thread started: " ++ show iTId
 
     csTId <- startCallbackSystem shared
-    putStrLn $ "[INFO] Interval thread started: " ++ show csTId
+    putStrLn $ "[INFO] CallbackSystem thread started: " ++ show csTId
 
     serve (Host interface) port $ handleConn shared
 

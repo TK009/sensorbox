@@ -14,8 +14,9 @@ import Control.Monad.State (get, put)
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.Text (Text)
-import Data.Time (DiffTime, UTCTime, Day)
+import Data.Time (UTCTime)
 import TextShow.TH
+import TextShow (TextShow, showb, fromString)
 
 -- * Sensor types
 
@@ -70,9 +71,10 @@ deriveSafeCopy 1 'base ''LatestStore
 $(makeAcidic ''LatestStore ['lookupSensorData, 'lookupSensorDatas,
                             'setSensorData, 'eraseSensorData])
 
-$(deriveTextShow ''DiffTime)
-$(deriveTextShow ''UTCTime)
-$(deriveTextShow ''Day)
+-- (FromStringShow UTCTime)
+instance TextShow UTCTime where
+    showb = fromString . show
+
 $(deriveTextShow ''SensorData)
 $(deriveTextShow ''UntypedData)
 
