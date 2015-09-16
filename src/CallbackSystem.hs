@@ -3,12 +3,12 @@ module CallbackSystem where
 
 
 import Control.Arrow ((&&&))
-import Network.Simple.TCP (connect, HostName, ServiceName)
-import Network.Socket (socketToHandle)
+-- import Network.Simple.TCP (connect, HostName, ServiceName)
+import Network.Socket (socketToHandle, HostName, ServiceName)
 -- import Control.Monad.IO.Class (MonadIO, liftIO)
 import System.IO (Handle, IOMode (..))
-import Control.Concurrent (forkIO, ThreadId)
-import Control.Concurrent.STM.TVar (TVar, newTVarIO, readTVar, writeTVar)
+import Control.Concurrent (forkIO, ThreadId, myThreadId)
+import Control.Concurrent.STM.TVar (TVar, newTVarIO, readTVar, writeTVar, modifyTVar')
 import Control.Concurrent.STM.TQueue (TQueue, newTQueue, readTQueue, writeTQueue)
 import Control.Concurrent.STM (atomically)
 import Control.Exception (try, IOException, displayException)
@@ -23,7 +23,7 @@ import TextShow
 import Subscriptions
 import Shared
 import Protocol
-import Socket (receiveRequest)
+import Socket (receiveRequest, forkConnect)
 import LatestStore (SensorData (..))
 import ProtocolImpl (processRequest, sendResponse)
 
@@ -47,11 +47,21 @@ callbackLoop shared @ Shared {sCallbackQueue = cbQueue} = do
     let loop = do
             cbData @ (SubData {sCallback = callbackAddr}, _) <- atomically $ readTQueue cbQueue
 
-            connQueue <- getConnection shared connectionsVar callbackAddr
-            atomically $ writeTQueue connQueue cbData
+            eConnQueue <- try $ getConnection shared connectionsVar callbackAddr
+            case eConnQueue of
+                Left e ->
+                    logException ("[WARN] Giving up, lost data " ++ show cbData) e
+                Right connQueue ->
+                    atomically $ writeTQueue connQueue cbData
 
             loop
     loop
+
+  where
+    logException :: String -> IOException -> IO ()
+    logException msg e = putStrLn $ msg ++
+        -- ", with callback: " ++ show cbAddr ++
+        ": " ++ displayException e
 
 
 -- | Create a new connection or reuse old connection
@@ -77,18 +87,25 @@ getConnection shared connectionsVar callbackAddr = do
   where
     (host, port, isRawResponse) = parseCallback callbackAddr
 
-    forkCallbackAgent handleQueue = do
-        putStrLn $ "[DEBUG] Connecting callback " ++ show callbackAddr
-        forkIO $ connect host port (newConnFunction handleQueue)
+    logException :: String -> IOException -> IO ()
+    logException msg e = putStrLn $ msg ++ ", with callback: " ++
+            show callbackAddr ++ ": " ++ displayException e
 
-    newConnFunction queue (sock, _) = do
-        sockHandle <- socketToHandle sock ReadWriteMode
-        handleCallbacks queue sockHandle
+    forkCallbackAgent handleQueue = do
+        putStrLn $ "[DEBUG] Connecting to callback " ++ show callbackAddr
+        forkConnect host port $ handleCallbacks handleQueue
+
+
+    -- newConnFunction queue (sock, _) = do
+    -- newConnFunction queue sockHandle =
+        -- sockHandle <- socketToHandle sock ReadWriteMode
+        -- tid <- forkIO $ handleCallbacks queue sockHandle
+        -- putStrLn $ "[DEBUG] Forked connection thread " ++ show tid
 
 
     handleCallbacks :: ConnectionQueue -> Handle -> IO ()
     handleCallbacks queue handle = do
-        (subData, sensorData) <- atomically $ readTQueue queue
+        originalMsgData @ (subData, sensorData) <- atomically $ readTQueue queue
         let reqID = sRequestID subData
             rawResults = case sensorData of
                 [single] -> Raw $ showt $ sdValue single
@@ -97,15 +114,24 @@ getConnection shared connectionsVar callbackAddr = do
             normalResults = Results reqID sensorData
             results = if isRawResponse then rawResults else normalResults
 
+        logThread $ "[DEBUG] Sending " ++ show results
         -- 1. send
         r1 <- try $ sendResponse handle results
 
         case r1 of
-            Left e ->
-                putStrLn $ "[DEBUG] Connection error: " ++
-                    displayException (e :: IOException)
+            Left e -> do  -- Connection is probably closed
+                logException "[DEBUG] Connection error, reloading connection" e
+
+                -- Remove this connection and ...
+                atomically $ do
+                    modifyTVar' connectionsVar $
+                        Map.delete callbackAddr
+                    -- Restart this message to reconnect
+                    writeTQueue queue originalMsgData
+
             Right _ -> do -- 2. listen response
 
+                logThread "[DEBUG] Listening callback response... "
                 -- Special responses for callbacks:
                 let rawResponse ""   = return ()
                     rawResponse line = do
@@ -125,11 +151,15 @@ getConnection shared connectionsVar callbackAddr = do
                 r2 <- try $ receiveRequest shared handle parseFail
                 case r2 of
                     Left e ->
-                        putStrLn $ "[WARN] Exception while waiting response from callback: " ++
-                            show callbackAddr ++ ":" ++ displayException (e :: IOException)
+                        logException "[WARN] Exception while waiting response" e
                     Right _ ->
                         return ()
         handleCallbacks queue handle
+
+logThread :: String -> IO ()
+logThread msg = do
+    tid <- myThreadId
+    putStrLn $ msg ++ " [" ++ show tid ++ "]"
 
 
 -- | parses callback, results in (host, port, isRawResponse)
