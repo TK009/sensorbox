@@ -1,0 +1,51 @@
+<MetaData>
+  <InfoItem name="DeviceType">
+    <value>LightSwitch</value>
+  </InfoItem>
+  <InfoItem name="AbstractDeviceType">
+    <value>BooleanIO</value>
+  </InfoItem>
+  <InfoItem name="PhysicalParentDevice">
+    <value>Objects/LivingRoom/Arduino1/RelayCard1</value>
+  </InfoItem>
+  <InfoItem name="PhysicalDeviceName">
+    <value>Led Strip, 10000K, cold white</value>
+  </InfoItem>
+  <InfoItem name="DataType">
+    <value>Bool</value>
+  </InfoItem>
+  <InfoItem name="Description">
+    <value>Led stripe ambient light.</value>
+  </InfoItem>
+  <InfoItem name="LocationDesc">
+    <value>Over the windows</value>
+  </InfoItem>
+  <InfoItem name="RoomImageNum">
+    <description>Which (pano) image of the room is best to show this device?</description>
+    <value>1</value>
+  </InfoItem>
+  <InfoItem name="RoomImageCoords">
+    <value>X</value>
+    <value>Y</value>
+  </InfoItem>
+  <InfoItem name="MinValue">
+    <value>0</value>
+  </InfoItem>
+  <InfoItem name="MaxValue">
+    <value>1</value>
+  </InfoItem>
+  <InfoItem name="MaxInterval">
+    <value>310</value> <!-- seconds?, max interval for waiting updates, give this or PhysicalParentDevice for watchdog -->
+  </InfoItem>
+  <InfoItem name="AgentInterval">
+    <value>300</value> <!-- seconds?, interval for running AgentCommands in agent -->
+  </InfoItem>
+  <InfoItem name="AgentOutputCommands">
+    <value>DR 10</value>
+    <value>not</value>
+  </InfoItem>
+  <InfoItem name="AgentInputCommands">
+    <value>DW 10 False</value>
+    <value>DW 10 True</value>
+  </InfoItem>
+</MetaData>

@@ -1,0 +1,95 @@
+<MetaData>
+  <InfoItem name="DeviceType">
+    <value>LightSwitch</value>
+    <value>Temperature</value>
+    <value>Humidity</value>
+    <value>CO2</value>
+    <value>Water</value> <!-- Boolean whether there is water (wet) or no water (dry) -->
+    <value>WaterLevel</value>
+    <value>LightLevel</value>
+    <value>WaterPump</value>
+    <value>Detector</value> <!-- For humans or animals, Boolean ? -->
+    <value>OnlineStatus</value>
+  </InfoItem>
+  <InfoItem name="AbstractDeviceType">
+    <value>BooleanIO</value>
+    <value>BooleanO</value>
+    <value>FloatingI</value>
+    <value>FloatingIO</value>
+    <value>FloatingO</value> <!-- Boundaries defined in Min/MaxValues -->
+    <value>CountO</value>
+    <value>CountIO</value>
+    <value>EventO</value> 
+    <value>EventIO</value> <!-- Events defined in Options -->
+  </InfoItem>
+  <InfoItem name="PhysicalParentDevice">
+    <value>Objects/LivingRoom/Arduino1/RelayCard1</value>
+  </InfoItem>
+  <InfoItem name="PhysicalDeviceName">
+    <value>Brand, Modelxyz</value>
+    <value>Arduino Uno, Relay card</value>
+  </InfoItem>
+  <InfoItem name="DataType">
+    <value>Bool</value>
+    <value>Int</value>
+    <value>Float</value>
+    <value>Double</value>
+    <value>Event</value>
+  </InfoItem>
+  <InfoItem name="Unit">
+    <value>m</value>
+    <value>%</value>
+    <value>s</value>
+    <value>#</value>
+    <value>°C</value>
+  </InfoItem>
+  <InfoItem name="Description">
+    <value></value>
+  </InfoItem>
+  <InfoItem name="LocationDesc">
+    <value>Pöydällä x</value>
+  </InfoItem>
+  <InfoItem name="RoomImageNum">
+    <description>Which (pano) image of the room is best to show this device?</description>
+    <value>1</value>
+    <value>2</value>
+  </InfoItem>
+  <InfoItem name="RoomImageCoords">
+    <value>X</value>
+    <value>Y</value>
+  </InfoItem>
+  <InfoItem name="MinValue">
+    <value>0</value>
+  </InfoItem>
+  <InfoItem name="MaxValue">
+    <value>100</value>
+  </InfoItem>
+  <InfoItem name="Options">
+    <value>DoorOpen</value>
+    <value>DoorMoving</value>
+    <value>DoorClosed</value>
+    <value>WaterOverflowAlert</value>
+    <value>OK</value>
+    <value>Dry</value>
+  </InfoItem>
+  <InfoItem name="Precission">
+    <description>Tells how much random noise</description>
+  </InfoItem>
+  <InfoItem name="Accuracy">
+    <description>Tells how far the avarage can be from the real value</description>
+  </InfoItem>
+  <InfoItem name="MaxInterval">
+    <value>10</value> <!-- seconds?, max interval for waiting updates, give this or PhysicalParentDevice for watchdog -->
+  </InfoItem>
+  <InfoItem name="AgentInterval">
+    <value>10</value> <!-- seconds?, interval for running AgentCommands in agent -->
+  </InfoItem>
+  <InfoItem name="AgentCommands">
+    <value>DR 10</value>
+  </InfoItem>
+  <!--
+  <InfoItem name="">
+    <value></value>
+  </InfoItem>
+  -->
+</MetaData>
