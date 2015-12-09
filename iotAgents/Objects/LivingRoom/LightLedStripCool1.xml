@@ -41,11 +41,11 @@
     <value>300</value> <!-- seconds?, interval for running AgentCommands in agent -->
   </InfoItem>
   <InfoItem name="AgentOutputCommands">
-    <value>DR 10</value>
+    <value>DR 9</value>
     <value>not</value>
   </InfoItem>
   <InfoItem name="AgentInputCommands">
-    <value>DW 10 False</value>
-    <value>DW 10 True</value>
+    <value>DW 9 False</value>
+    <value>DW 9 True</value>
   </InfoItem>
 </MetaData>
